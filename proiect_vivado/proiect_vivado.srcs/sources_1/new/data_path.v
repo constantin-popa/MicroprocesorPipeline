@@ -4,20 +4,16 @@ module data_path(
     input clk,
     input res,
     
-    input PCWriteCond,
-	input PCWrite,
-	input IorD,
-	input MemRead,
-	input MemWrite,
-	input MemtoReg,
-	input IRWrite,
-	input RegWrite, 
-	input ALUSrcA, 
-	input [1:0] ALUSrcB, 
-	input [1:0] ALUOp,
-	input PCSource,
+	input ALUSrcB,       //EXECUTE
+	input [1:0] ALUOp,   //EXECUTE
+	input MemRead,   //MEM ACCES
+	input MemWrite,  //MEM ACCES
+	input Branch,    //MEM ACCES
+	input RegWrite,   //WRITE BACK
+	input MemtoReg,   //WRITE BACK
 	
-	output [6:0] op_code
+	output [6:0] op_code,
+	output [2:0] fun3
 );
 
 reg [31:0] IR;
@@ -49,6 +45,11 @@ reg [96:0] EX_MEM;   //intre Execution si Memory acces se transmit sum, iesirea 
 reg [128:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu si data ce s a citit din memorie
 
 
+//stabileste op_code 
+assign op_code = IR[6:0];
+//stabileste fun3
+assign fun3 = IR[14:12];
+
 //extragere valoare imediata in functie de opcode
 always@(IR) begin
 	case(IR[6:0])
@@ -68,7 +69,7 @@ always@(IR) begin
 	endcase
 end
 
-//IR
+//IR 
 always@(posedge clk) begin
 	casex({res, IRWrite})
 		2'b1_x : IR <= 0;
