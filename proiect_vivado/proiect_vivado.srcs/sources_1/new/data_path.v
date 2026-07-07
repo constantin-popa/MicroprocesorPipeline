@@ -15,7 +15,8 @@ module data_path(
 	input MemtoReg,   //WRITE BACK
 	
 	output [6:0] op_code,
-	output [2:0] fun3
+	output [2:0] fun3,
+	output fun7
 );
 
 wire [7:0] control;
@@ -37,7 +38,7 @@ wire [31:0] da;
 wire [31:0] db; 
 
 //rezultat pc + imm
-wire [31:0] sum;
+wire [31:0] PCSum;
 //iesiri alu
 wire Zero;  //activa in cazul in care o operatie are ca rezultat 0
 reg [31:0] alu; //rezultatul efectiv al operatiei executate de alu
@@ -46,8 +47,8 @@ reg [31:0] MDR; //datele citite din memoria de date
 
 reg [63:0] IF_ID;   //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
                     
-reg [135:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
-                       //+ toate semnalele de control
+reg [139:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
+                       //+ toate semnalele de control + fun3 + 1bit din fun7
 reg [101:0] EX_MEM;   //intre Execution si Memory acces se transmit sum, iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2
                        //+ semnalele de control pentru mem si wb
 reg [130:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu si data ce s a citit din memorie
@@ -75,6 +76,19 @@ always@(IR) begin
         default:
             imm32 = 32'h0000_0000;
 	endcase
+end
+
+//Sumator care calculeaza adresa de salt pentru brench
+assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curente 
+
+//logica PC
+always@(posedge clk) begin
+    if( Zero & Branch ) begin   //conditia echivalenta cu PCSrc
+        PC <= PCSum;
+    end
+    else begin
+        PC <= PC + 4;
+    end
 end
 
 //IR 
@@ -113,6 +127,8 @@ assign rd = IR[11:7];
 //toate semnalele de control
 always @(posedge clk) begin
     ID_EX = {
+        IF_ID[30],     //al 2lea MSB din fun7 care influenteaza operatiile in alu
+        IF_ID[14:12],  //fun3
         control,   //ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg
         IF_ID[63:32],  /* PC */ 
         da,
@@ -123,8 +139,25 @@ end
 //Activ pe 1 daca alu == 0
 assign Zero = (alu == 0) ? 1 : 0;
 
-//Sumator care calculeaza adresa de salt pentru brench
-assign sum = PC + imm32;
+//alu
+wire a = ID_EX[95:64]; //da
+wire b = ALUSrcB ? ID_EX[63:32] /*db*/ : ID_EX[31:0];
+
+always@* begin
+    case({ALUOp, ID_EX[139:136]})
+        6'b00_x_xxx : alu = a + b;  //lw si sw
+        6'b01_x_xxx : alu = a - b;  //brench
+        
+        6'b10_0_000 : alu = a + b;  //R type
+        6'b10_1_000 : alu = a - b;
+        6'b10_0_111 : alu = a & b;
+        6'b10_0_110 : alu = a | b;
+   
+    default:
+            alu = 32'b0;
+	endcase
+
+end
 
 //EX_MEM
 //intre Execution si Memory acces se transmit PC (calculat cu val imediata in caz de brench), iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2 ( pentru sw)
@@ -132,7 +165,7 @@ assign sum = PC + imm32;
 always @(posedge clk) begin
     EX_MEM = {
         ID_EX[132:128], /*MemRead, MemWrite,Branch, RegWrite,MemtoReg*/ 
-        sum,
+        PCSum,
         Zero,
         alu,
         ID_EX[63:32] /*rs2*/
