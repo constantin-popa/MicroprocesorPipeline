@@ -58,6 +58,8 @@ reg [70:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu 
 assign op_code = IR[6:0];
 //stabileste fun3
 assign fun3 = IR[14:12];
+//stabileste fun7
+assign fun7 = IR[31:25];
 
 //extragere valoare imediata in functie de opcode
 always@(IR) begin
@@ -84,7 +86,7 @@ assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curen
 //logica PC
 always@(posedge clk) begin
     //in loc de branch si Zero, ne uitam la bitul din EX_MEM corespunzator
-    if( EX_MEM[64] /*Zero*/ & EX_MEM[130] /*branch*/ ) begin   //conditia echivalenta cu PCSrc
+    if( EX_MEM[64] /*Zero*/ & EX_MEM[99] /*branch*/ ) begin   //conditia echivalenta cu PCSrc
         PC <= PCSum;
     end
     else begin
@@ -209,7 +211,7 @@ always@(posedge clk) begin
 end
 
 //Scrierea in registru
-always@(posedge clk)
+always@(posedge clk) begin 
 	if (res == 1) begin
 		regs[0] <= 0; regs[1] <= 0; regs[2] <= 0; regs[3] <= 0; regs[4] <= 0; regs[5] <= 0;
 		regs[6] <= 0; regs[7] <= 0; regs[8] <= 0; regs[9] <= 0; regs[10] <= 0; regs[11] <= 0;
@@ -221,4 +223,32 @@ always@(posedge clk)
 	end else if ( MEM_WB[65] == 1) 
 		regs[ MEM_WB[70:66] ] <= ( MEM_WB[64] == 1) ? MEM_WB[63:32] : MEM_WB[31:0]; 
        //regs[rd] <=  (MemToReg == 1) ? MDR : AluOut;
+end
+
+integer i;
+reg [31:0] temp_mem [0:512];  // Adjust depth as needed
+initial begin
+	$readmemh("mem.mem", temp_mem);
+    `define TEXT_OFFSET 0
+    `define TEXT_WORDS 64
+    `define DATA_OFFSET 256
+    `define DATA_WORDS (1024-`DATA_OFFSET)
+    for (i = 0; i < `TEXT_WORDS; i = i + 1) begin
+      mem[i*4 + 3+`TEXT_OFFSET] = temp_mem[i+`TEXT_OFFSET][31:24];
+      mem[i*4 + 2+`TEXT_OFFSET] = temp_mem[i+`TEXT_OFFSET][23:16];
+      mem[i*4 + 1+`TEXT_OFFSET] = temp_mem[i+`TEXT_OFFSET][15:8];
+      mem[i*4 + 0+`TEXT_OFFSET] = temp_mem[i+`TEXT_OFFSET][7:0];
+    end
+    for (i = 0; i < `DATA_WORDS; i = i + 1) begin
+      mem[i*4 + 3+`DATA_OFFSET] = temp_mem[i+`DATA_OFFSET][31:24];
+      mem[i*4 + 2+`DATA_OFFSET] = temp_mem[i+`DATA_OFFSET][23:16];
+      mem[i*4 + 1+`DATA_OFFSET] = temp_mem[i+`DATA_OFFSET][15:8];
+      mem[i*4 + 0+`DATA_OFFSET] = temp_mem[i+`DATA_OFFSET][7:0];
+    end
+end
+
 endmodule
+
+
+
+

@@ -31,5 +31,5 @@ module control_path(
         endcase
     end
     
-
-}
+endmodule
+    
