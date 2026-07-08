@@ -47,7 +47,7 @@ reg [31:0] MDR; //datele citite din memoria de date
 
 reg [63:0] IF_ID;   //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
                     
-reg [143:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
+reg [144:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
                        //+ toate semnalele de control + fun3 + 1bit din fun7
 reg [106:0] EX_MEM;   //intre Execution si Memory acces se transmit sum, iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2
                        //+ semnalele de control pentru mem si wb
@@ -85,9 +85,12 @@ assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curen
 
 //logica PC
 always@(posedge clk) begin
+    if( res == 1 ) begin
+        PC <= 0;
+    end else
     //in loc de branch si Zero, ne uitam la bitul din EX_MEM corespunzator
     if( EX_MEM[64] /*Zero*/ & EX_MEM[99] /*branch*/ ) begin   //conditia echivalenta cu PCSrc
-        PC <= PCSum;
+        PC <= EX_MEM[96:65];
     end
     else begin
         PC <= PC + 4;
@@ -99,10 +102,10 @@ always@(posedge clk) begin
 	if (res == 1)
 	   IR <= 0;
 	else begin
-	    IR[31:24] 	<= mem[addr_mem+3];
-		IR[23:16] 	<= mem[addr_mem+2];
-		IR[15:8] 	<= mem[addr_mem+1];
-		IR[7:0] 	<= mem[addr_mem];
+	    IR[31:24] 	<= mem[PC+3];
+		IR[23:16] 	<= mem[PC+2];
+		IR[15:8] 	<= mem[PC+1];
+		IR[7:0] 	<= mem[PC];
     end   
 end
 
@@ -130,10 +133,10 @@ assign rd = IR[11:7];
 //toate semnalele de control
 always @(posedge clk) begin
     ID_EX = {
-/*143:139*/    IF_ID[11:7],   // registrul de scrierere  
-/*138*/        IF_ID[30],     //al 2lea MSB din fun7 care influenteaza operatiile in alu
-/*137:135*/    IF_ID[14:12],  //fun3
-/*134:128*/    control,   //ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg
+/*144:140*/    IF_ID[11:7],   // registrul de scrierere  
+/*139*/        IF_ID[30],     //al 2lea MSB din fun7 care influenteaza operatiile in alu
+/*138:136*/    IF_ID[14:12],  //fun3
+/*135:128*/    control,   //ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg
 /*127:96*/     IF_ID[63:32],  /* PC */ 
 /*95:64*/      da,
 /*63:32*/      db,
@@ -144,8 +147,8 @@ end
 assign Zero = (alu == 0) ? 1 : 0;
 
 //alu
-wire a = ID_EX[95:64]; //da
-wire b = ALUSrcB ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
+wire [31:0] a = ID_EX[95:64]; //da
+wire [31:0] b = (ALUSrcB == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
 
 always@* begin
     case({ALUOp, ID_EX[139:136]})
@@ -173,7 +176,7 @@ always @(posedge clk) begin
 /*96:65*/    PCSum,
 /*64*/       Zero,
 /*63:32*/    alu,
-/*31:0*/     ID_EX[63:32] // rs2            
+/*31:0*/     ID_EX[63:32] // db            
     };
 end
 
