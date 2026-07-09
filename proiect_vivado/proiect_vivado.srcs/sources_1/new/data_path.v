@@ -43,7 +43,7 @@ wire [31:0] PCSum;
 wire Zero;  //activa in cazul in care o operatie are ca rezultat 0
 reg [31:0] alu; //rezultatul efectiv al operatiei executate de alu
 
-reg [31:0] MDR; //datele citite din memoria de date
+wire [31:0] MDR; //datele citite din memoria de date
 
 reg [63:0] IF_ID;   //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
                     
@@ -80,6 +80,10 @@ always@(IR) begin
 	endcase
 end
 
+//reg [31:0] imm32Reg;
+//always@(posedge clk)
+//    imm32Reg <= imm32;
+
 //Sumator care calculeaza adresa de salt pentru brench
 assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curente 
 
@@ -112,7 +116,7 @@ end
 // IF_ID
 //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
 always @(posedge clk) begin
-    IF_ID = {
+    IF_ID <= {
 /*63:32*/       PC,
 /*31:0*/        IR
     };
@@ -132,7 +136,7 @@ assign rd = IR[11:7];
 //intre InstructionDecode si Execution se transmite PC ( pentru un branch eventual),  datele din registrii sursa si valoarea imediata ( pentru operatiile din Execute )
 //toate semnalele de control
 always @(posedge clk) begin
-    ID_EX = {
+    ID_EX <= {
 /*144:140*/    IF_ID[11:7],   // registrul de scrierere  
 /*139*/        IF_ID[30],     //al 2lea MSB din fun7 care influenteaza operatiile in alu
 /*138:136*/    IF_ID[14:12],  //fun3
@@ -150,8 +154,8 @@ assign Zero = (alu == 0) ? 1 : 0;
 wire [31:0] a = ID_EX[95:64]; //da
 wire [31:0] b = (ALUSrcB == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
 
-always@* begin
-    case({ALUOp, ID_EX[139:136]})
+always@(*) begin
+    casex({ALUOp, ID_EX[139:136]})
         6'b00_x_xxx : alu = a + b;  //lw si sw
         6'b01_x_xxx : alu = a - b;  //brench
         
@@ -159,23 +163,34 @@ always@* begin
         6'b10_1_000 : alu = a - b;
         6'b10_0_111 : alu = a & b;
         6'b10_0_110 : alu = a | b;
+        
+        6'b11_x_000 : alu = a + b;
+        6'b11_x_111 : alu = a & b;
+        6'b11_x_110 : alu = a | b;
    
-    default:
+        default:
             alu = 32'b0;
 	endcase
 
+end
+
+reg [31:0] aluReg;
+
+//fix pentru a avea in pasul urmator din pipeline valoarea corecta calculata de ALU
+always@(posedge clk) begin
+    aluReg <= alu; 
 end
 
 //EX_MEM
 //intre Execution si Memory acces se transmit PC (calculat cu val imediata in caz de brench), iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2 ( pentru sw)
 //semnalele de control pentru mem si wb
 always @(posedge clk) begin
-    EX_MEM = {
-/*106:102*/  ID_EX[143:139], //registrul de scriere
+    EX_MEM <= {
+/*106:102*/  ID_EX[144:140], //registrul de scriere
 /*101:97*/   ID_EX[132:128], /*MemRead, MemWrite,Branch, RegWrite,MemtoReg*/ 
 /*96:65*/    PCSum,
 /*64*/       Zero,
-/*63:32*/    alu,
+/*63:32*/    aluReg,
 /*31:0*/     ID_EX[63:32] // db            
     };
 end
@@ -184,10 +199,13 @@ end
 //intre Memory si WriteBack se transmit rezultatul lui alu si data ce s a citit din memorie
 // semnalele de control pentru wb
 always @(posedge clk) begin
-    MEM_WB = {
+    MEM_WB <= {
 /*70:66*/       EX_MEM[106:102], //registru de scriere
 /*65:64*/       EX_MEM[98:97],   //RegWrite,MemtoReg
-/*63:32*/       MDR, 
+/*63:32*/       mem[EX_MEM[63:32]+3],
+                mem[EX_MEM[63:32]+2],
+                mem[EX_MEM[63:32]+1],
+                mem[EX_MEM[63:32]],
 /*31:0*/        EX_MEM[63:32] /* alu */ 
     };
 end
@@ -204,14 +222,17 @@ end
 
 //valoarea extrasa din memoria de date in etapa de memory acces
 //Citire din memorie
-always@(posedge clk) begin
-    if(/*MemRead*/ EX_MEM[99] == 1) begin
-        MDR[31:24] 	<= mem[EX_MEM[63:32]+3];
-        MDR[23:16] 	<= mem[EX_MEM[63:32]+2];
-        MDR[15:8] 	<= mem[EX_MEM[63:32]+1];
-        MDR[7:0] 	<= mem[EX_MEM[63:32]];	
-    end
-end
+//always@(posedge clk) begin
+////    if(res == 1) begin
+////        MDR <= 32'b0;
+////    end else 
+//    if(/*MemRead*/ EX_MEM[101] == 1) begin
+//        MDR[31:24] 	= mem[EX_MEM[63:32]+3];
+//        MDR[23:16] 	= mem[EX_MEM[63:32]+2];
+//        MDR[15:8] 	= mem[EX_MEM[63:32]+1];
+//        MDR[7:0] 	= mem[EX_MEM[63:32]];	
+//    end
+//end
 
 //Scrierea in registru
 always@(posedge clk) begin 

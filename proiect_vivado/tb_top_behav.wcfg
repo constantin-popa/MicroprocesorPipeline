@@ -12,14 +12,14 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0.000 ns"></ZoomStartTime>
-      <ZoomEndTime time="378.885 ns"></ZoomEndTime>
-      <Cursor1Time time="280.000 ns"></Cursor1Time>
+      <ZoomEndTime time="280.001 ns"></ZoomEndTime>
+      <Cursor1Time time="35.568 ns"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
       <NameColumnWidth column_width="231"></NameColumnWidth>
-      <ValueColumnWidth column_width="80"></ValueColumnWidth>
+      <ValueColumnWidth column_width="60"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="24" />
+   <WVObjectSize size="14" />
    <wvobject fp_name="/tb_top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -28,66 +28,18 @@
       <obj_property name="ElementShortName">res</obj_property>
       <obj_property name="ObjectShortName">res</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_top/DUT/clk" type="logic">
-      <obj_property name="ElementShortName">clk</obj_property>
-      <obj_property name="ObjectShortName">clk</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/res" type="logic">
-      <obj_property name="ElementShortName">res</obj_property>
-      <obj_property name="ObjectShortName">res</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/ALUSrcB" type="logic">
-      <obj_property name="ElementShortName">ALUSrcB</obj_property>
-      <obj_property name="ObjectShortName">ALUSrcB</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/ALUOp" type="array">
-      <obj_property name="ElementShortName">ALUOp[1:0]</obj_property>
-      <obj_property name="ObjectShortName">ALUOp[1:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/MemRead" type="logic">
-      <obj_property name="ElementShortName">MemRead</obj_property>
-      <obj_property name="ObjectShortName">MemRead</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/MemWrite" type="logic">
-      <obj_property name="ElementShortName">MemWrite</obj_property>
-      <obj_property name="ObjectShortName">MemWrite</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/Branch" type="logic">
-      <obj_property name="ElementShortName">Branch</obj_property>
-      <obj_property name="ObjectShortName">Branch</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/RegWrite" type="logic">
-      <obj_property name="ElementShortName">RegWrite</obj_property>
-      <obj_property name="ObjectShortName">RegWrite</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/MemtoReg" type="logic">
-      <obj_property name="ElementShortName">MemtoReg</obj_property>
-      <obj_property name="ObjectShortName">MemtoReg</obj_property>
-   </wvobject>
    <wvobject fp_name="/tb_top/DUT/op_code" type="array">
       <obj_property name="ElementShortName">op_code[6:0]</obj_property>
       <obj_property name="ObjectShortName">op_code[6:0]</obj_property>
       <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
    </wvobject>
-   <wvobject fp_name="/tb_top/DUT/fun3" type="array">
-      <obj_property name="ElementShortName">fun3[2:0]</obj_property>
-      <obj_property name="ObjectShortName">fun3[2:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/fun7" type="logic">
-      <obj_property name="ElementShortName">fun7</obj_property>
-      <obj_property name="ObjectShortName">fun7</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/DP/mem" type="array">
-      <obj_property name="ElementShortName">mem[0:1023][7:0]</obj_property>
-      <obj_property name="ObjectShortName">mem[0:1023][7:0]</obj_property>
+   <wvobject fp_name="/tb_top/DUT/DP/PC" type="array">
+      <obj_property name="ElementShortName">PC[31:0]</obj_property>
+      <obj_property name="ObjectShortName">PC[31:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/IR" type="array">
       <obj_property name="ElementShortName">IR[31:0]</obj_property>
       <obj_property name="ObjectShortName">IR[31:0]</obj_property>
-   </wvobject>
-   <wvobject fp_name="/tb_top/DUT/DP/PC" type="array">
-      <obj_property name="ElementShortName">PC[31:0]</obj_property>
-      <obj_property name="ObjectShortName">PC[31:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/regs" type="array">
       <obj_property name="ElementShortName">regs[0:31][31:0]</obj_property>
@@ -104,7 +56,6 @@
    <wvobject fp_name="/tb_top/DUT/DP/EX_MEM" type="array">
       <obj_property name="ElementShortName">EX_MEM[106:0]</obj_property>
       <obj_property name="ObjectShortName">EX_MEM[106:0]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/MEM_WB" type="array">
       <obj_property name="ElementShortName">MEM_WB[70:0]</obj_property>
@@ -118,5 +69,14 @@
       <obj_property name="ElementShortName">b[31:0]</obj_property>
       <obj_property name="ObjectShortName">b[31:0]</obj_property>
       <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/alu" type="array">
+      <obj_property name="ElementShortName">alu[31:0]</obj_property>
+      <obj_property name="ObjectShortName">alu[31:0]</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/mem" type="array">
+      <obj_property name="ElementShortName">mem[0:1023][7:0]</obj_property>
+      <obj_property name="ObjectShortName">mem[0:1023][7:0]</obj_property>
    </wvobject>
 </wave_config>

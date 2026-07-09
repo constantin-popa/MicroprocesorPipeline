@@ -28,6 +28,7 @@ module control_path(
             10'b0100011_010 : control = 8'b1_00_0_1_0_0_x;   //sw
             10'b0110011_xxx : control = 8'b0_10_0_0_0_1_0;   //R type instructions
             10'b1100011_000 : control = 8'b0_01_0_0_1_0_x;   //beq
+            10'b0010011_xxx : control = 8'b1_11_0_0_0_1_0;   //I type instructions
             
             default: control = 8'bx;
         endcase
