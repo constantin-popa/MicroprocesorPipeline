@@ -22,7 +22,7 @@ module control_path(
     
     assign { ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg} = control; 
 
-    always@(posedge clk) begin
+    always@(*) begin
         casex({op_code, fun3}) //ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite, MemtoReg
             10'b0000011_010 : control = 8'b1_00_1_0_0_1_1;   //lw
             10'b0100011_010 : control = 8'b1_00_0_1_0_0_x;   //sw

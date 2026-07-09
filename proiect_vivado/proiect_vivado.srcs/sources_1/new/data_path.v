@@ -24,7 +24,7 @@ wire [7:0] control;
 assign control = { ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg}; 
 
 
-reg [31:0] IR;
+wire [31:0] IR;
 reg [31:0] PC;
 reg [31:0] imm32;
 //memoria procesorului (1024 de cuvite de 8 biti)
@@ -55,34 +55,30 @@ reg [70:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu 
                        //+ semnalele de control pentru wb
 
 //stabileste op_code 
-assign op_code = IR[6:0];
+assign op_code = IF_ID[6:0];
 //stabileste fun3
-assign fun3 = IR[14:12];
+assign fun3 = IF_ID[14:12];
 //stabileste fun7
-assign fun7 = IR[31:25];
+assign fun7 = IF_ID[31:25];
 
 //extragere valoare imediata in functie de opcode
-always@(IR) begin
-	case(IR[6:0])
+always@(IF_ID[31:0]) begin
+	case(IF_ID[6:0])
         7'b0000011,
         7'b0001111,
         7'b0011011,
         7'b1100111,
         7'b1110011,
-        7'b0010011: imm32 = { {20{IR[31]}}, IR[31:20]};
-        7'b0100011: imm32 = { {20{IR[31]}}, IR[31:25], IR[11:7]};
-        7'b1100011: imm32 = { {20{IR[31]}}, IR[7], IR[30:25], IR[11:8], 1'b0};            
-        7'b1101111: imm32 = { {12{IR[31]}}, IR[19:12], IR[20], IR[30:25], IR[11:8], 1'b0};            
+        7'b0010011: imm32 = { {20{IF_ID[31]}}, IF_ID[31:20]};
+        7'b0100011: imm32 = { {20{IF_ID[31]}}, IF_ID[31:25], IF_ID[11:7]};
+        7'b1100011: imm32 = { {20{IF_ID[31]}}, IF_ID[7], IF_ID[30:25], IF_ID[11:8], 1'b0};            
+        7'b1101111: imm32 = { {12{IF_ID[31]}}, IF_ID[19:12], IF_ID[20], IF_ID[30:25], IF_ID[11:8], 1'b0};            
         7'b0010111,
-        7'b0110111: imm32 = { IR[31:12], {12{1'b0}}}; 
+        7'b0110111: imm32 = { IF_ID[31:12], {12{1'b0}}}; 
         default:
             imm32 = 32'h0000_0000;
 	endcase
 end
-
-//reg [31:0] imm32Reg;
-//always@(posedge clk)
-//    imm32Reg <= imm32;
 
 //Sumator care calculeaza adresa de salt pentru brench
 assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curente 
@@ -102,16 +98,13 @@ always@(posedge clk) begin
 end
 
 //IR 
-always@(posedge clk) begin
-	if (res == 1)
-	   IR <= 0;
-	else begin
-	    IR[31:24] 	<= mem[PC+3];
-		IR[23:16] 	<= mem[PC+2];
-		IR[15:8] 	<= mem[PC+1];
-		IR[7:0] 	<= mem[PC];
-    end   
-end
+assign IR = {
+    mem[PC+3],
+    mem[PC+2],
+    mem[PC+1], 
+    mem[PC]
+};
+
 
 // IF_ID
 //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
@@ -123,14 +116,14 @@ always @(posedge clk) begin
 end
 
 //registrul sursa 1
-wire [4:0] ra = IR[19:15];
+wire [4:0] ra = IF_ID[19:15];
 assign da = regs[ra];       //valoarea din registrul sursa 1
 //registrul sursa 2
-wire [4:0] rb = IR[24:20]; 
+wire [4:0] rb = IF_ID[24:20]; 
 assign db = regs[rb];       // valoarea din registrul sursa 2
 wire [4:0] rd;
 //registrul destinatie
-assign rd = IR[11:7];
+assign rd = IF_ID[11:7];
 
 // ID_EX
 //intre InstructionDecode si Execution se transmite PC ( pentru un branch eventual),  datele din registrii sursa si valoarea imediata ( pentru operatiile din Execute )
@@ -152,10 +145,10 @@ assign Zero = (alu == 0) ? 1 : 0;
 
 //alu
 wire [31:0] a = ID_EX[95:64]; //da
-wire [31:0] b = (ALUSrcB == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
+wire [31:0] b = (ID_EX[135] == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
 
 always@(*) begin
-    casex({ALUOp, ID_EX[139:136]})
+    casex({ID_EX[134:133], ID_EX[139:136]})
         6'b00_x_xxx : alu = a + b;  //lw si sw
         6'b01_x_xxx : alu = a - b;  //brench
         
@@ -174,12 +167,6 @@ always@(*) begin
 
 end
 
-reg [31:0] aluReg;
-
-//fix pentru a avea in pasul urmator din pipeline valoarea corecta calculata de ALU
-always@(posedge clk) begin
-    aluReg <= alu; 
-end
 
 //EX_MEM
 //intre Execution si Memory acces se transmit PC (calculat cu val imediata in caz de brench), iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2 ( pentru sw)
@@ -190,7 +177,7 @@ always @(posedge clk) begin
 /*101:97*/   ID_EX[132:128], /*MemRead, MemWrite,Branch, RegWrite,MemtoReg*/ 
 /*96:65*/    PCSum,
 /*64*/       Zero,
-/*63:32*/    aluReg,
+/*63:32*/    alu,
 /*31:0*/     ID_EX[63:32] // db            
     };
 end
