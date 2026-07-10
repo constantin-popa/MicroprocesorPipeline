@@ -47,13 +47,15 @@ wire [31:0] MDR; //datele citite din memoria de date
 
 reg [63:0] IF_ID;   //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
                     
-reg [144:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
+reg [154:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
                        //+ toate semnalele de control + fun3 + 1bit din fun7
 reg [106:0] EX_MEM;   //intre Execution si Memory acces se transmit sum, iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2
                        //+ semnalele de control pentru mem si wb
 reg [70:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu si data ce s a citit din memorie
                        //+ semnalele de control pentru wb
-
+reg [1:0] ForwardA;
+reg [1:0] ForwardB;
+wire [31:0] wb_data;
 //stabileste op_code 
 assign op_code = IF_ID[6:0];
 //stabileste fun3
@@ -109,6 +111,9 @@ assign IR = {
 // IF_ID
 //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
 always @(posedge clk) begin
+    if(res)
+        IF_ID <= 63'b0;
+    else
     IF_ID <= {
 /*63:32*/       PC,
 /*31:0*/        IR
@@ -117,10 +122,17 @@ end
 
 //registrul sursa 1
 wire [4:0] ra = IF_ID[19:15];
-assign da = regs[ra];       //valoarea din registrul sursa 1
+assign da = (ra == 5'b0) ? 32'b0 :  //registrul 0
+            ((MEM_WB[65] && (MEM_WB[70:66] == ra)) ?  
+            wb_data : //valoarea care se scrie in acest moment 
+            regs[ra] );//valoarea din registrul sursa 1
+
 //registrul sursa 2
 wire [4:0] rb = IF_ID[24:20]; 
-assign db = regs[rb];       // valoarea din registrul sursa 2
+assign db = (rb == 5'b0) ? 32'b0 :  //registrul 0
+            ((MEM_WB[65] && (MEM_WB[70:66] == rb)) ?
+            wb_data :   //valoarea care se scrie in acest moment 
+            regs[rb] );       // valoarea din registrul sursa 2
 wire [4:0] rd;
 //registrul destinatie
 assign rd = IF_ID[11:7];
@@ -129,8 +141,13 @@ assign rd = IF_ID[11:7];
 //intre InstructionDecode si Execution se transmite PC ( pentru un branch eventual),  datele din registrii sursa si valoarea imediata ( pentru operatiile din Execute )
 //toate semnalele de control
 always @(posedge clk) begin
+    if(res)
+        ID_EX <= 154'b0;
+    else
     ID_EX <= {
-/*144:140*/    IF_ID[11:7],   // registrul de scrierere  
+/*154:150*/    IF_ID[19:15],  //rs1
+/*149:145*/    IF_ID[24:20],  //rs2
+/*144:140*/    IF_ID[11:7],   // registrul de scrierere  -> folosit pt wb si forwarding
 /*139*/        IF_ID[30],     //al 2lea MSB din fun7 care influenteaza operatiile in alu
 /*138:136*/    IF_ID[14:12],  //fun3
 /*135:128*/    control,   //ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg
@@ -144,8 +161,16 @@ end
 assign Zero = (alu == 0) ? 1 : 0;
 
 //alu
-wire [31:0] a = ID_EX[95:64]; //da
-wire [31:0] b = (ID_EX[135] == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
+wire [31:0] a = (ForwardA == 2'b00) ? ID_EX[95:64]: //valoarea din registri
+            ((ForwardA == 2'b10) ? EX_MEM[63:32] :  //[forward] valoarea de la alu
+            wb_data) ; //[forward] valoarea de la date sau un alu anterior
+
+
+//(ID_EX[135] == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]; /*imm32*/
+wire [31:0] b = (ForwardB == 2'b00) ?  ((ID_EX[135] == 0) ? ID_EX[63:32] /*db*/ : ID_EX[31:0]) :
+            ((ForwardB == 2'b10) ? EX_MEM[63:32] :  //[forward] valoarea de la alu
+            wb_data) ; //[forward] valoarea de la date sau un alu anterior
+
 
 always@(*) begin
     casex({ID_EX[134:133], ID_EX[139:136]})
@@ -167,11 +192,48 @@ always@(*) begin
 
 end
 
+always@(*) begin
+    //hazarduri de EX
+    ForwardA = 2'b00;
+    ForwardB = 2'b00;
+    if ( EX_MEM[98] & 
+         (EX_MEM[106:102] != 5'b0) &
+         (EX_MEM[106:102] == ID_EX[154:150])  //EX_MEM rd = ID_EX rs1
+        ) begin
+        ForwardA = 2'b10;
+    end
+    if ( EX_MEM[98] & 
+         (EX_MEM[106:102] != 5'b0) &
+         (EX_MEM[106:102] == ID_EX[149:145]) // EX_MEM rd = ID_EX rs2
+        ) begin
+        ForwardB = 2'b10;
+    end
+    //hazarduri de MEM
+    if ( MEM_WB[65] & 
+         (MEM_WB[70:66] != 5'b0) &
+         ~(EX_MEM[98] & (EX_MEM[106:102] != 0) & (EX_MEM[106:102] == ID_EX[154:150]) ) &
+         (MEM_WB[70:66] == ID_EX[154:150]) // MEM_WB rd = ID_EX rs1
+        ) begin
+        ForwardA = 2'b01;
+    end
+    
+    if ( MEM_WB[65] & 
+         (MEM_WB[70:66] != 5'b0) &
+         ~(EX_MEM[98] & (EX_MEM[106:102] != 0) & (EX_MEM[106:102] == ID_EX[149:145]) ) &
+         (MEM_WB[70:66] == ID_EX[149:145]) // MEM_WB rd = ID_EX rs2
+        ) begin
+        ForwardB = 2'b01;
+    end
+    
+end
 
 //EX_MEM
 //intre Execution si Memory acces se transmit PC (calculat cu val imediata in caz de brench), iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2 ( pentru sw)
 //semnalele de control pentru mem si wb
 always @(posedge clk) begin
+    if(res)
+        EX_MEM <= 106'b0;
+    else
     EX_MEM <= {
 /*106:102*/  ID_EX[144:140], //registrul de scriere
 /*101:97*/   ID_EX[132:128], /*MemRead, MemWrite,Branch, RegWrite,MemtoReg*/ 
@@ -186,6 +248,9 @@ end
 //intre Memory si WriteBack se transmit rezultatul lui alu si data ce s a citit din memorie
 // semnalele de control pentru wb
 always @(posedge clk) begin
+    if(res)
+        MEM_WB <= 70'b0;
+    else
     MEM_WB <= {
 /*70:66*/       EX_MEM[106:102], //registru de scriere
 /*65:64*/       EX_MEM[98:97],   //RegWrite,MemtoReg
@@ -221,6 +286,8 @@ end
 //    end
 //end
 
+
+assign wb_data = ( MEM_WB[64] == 1) ? MEM_WB[63:32] : MEM_WB[31:0];
 //Scrierea in registru
 always@(posedge clk) begin 
 	if (res == 1) begin
@@ -231,8 +298,8 @@ always@(posedge clk) begin
 		regs[24] <= 0; regs[25] <= 0; regs[26] <= 0; regs[27] <= 0; regs[28] <= 0; regs[29] <= 0;
 		regs[30] <= 0; regs[31] <= 0;
 		
-	end else if ( MEM_WB[65] == 1) 
-		regs[ MEM_WB[70:66] ] <= ( MEM_WB[64] == 1) ? MEM_WB[63:32] : MEM_WB[31:0]; 
+	end else if ( MEM_WB[65] == 1) //daca destinatia este 0, se sare peste scriere
+		regs[ MEM_WB[70:66] ] <= wb_data; 
        //regs[rd] <=  (MemToReg == 1) ? MDR : AluOut;
 end
 

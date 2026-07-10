@@ -12,14 +12,14 @@
    </db_ref_list>
    <zoom_setting>
       <ZoomStartTime time="0.000 ns"></ZoomStartTime>
-      <ZoomEndTime time="383.592 ns"></ZoomEndTime>
-      <Cursor1Time time="75.000 ns"></Cursor1Time>
+      <ZoomEndTime time="280.001 ns"></ZoomEndTime>
+      <Cursor1Time time="105.000 ns"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="225"></NameColumnWidth>
+      <NameColumnWidth column_width="221"></NameColumnWidth>
       <ValueColumnWidth column_width="58"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="14" />
+   <WVObjectSize size="16" />
    <wvobject fp_name="/tb_top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -44,15 +44,14 @@
    <wvobject fp_name="/tb_top/DUT/DP/regs" type="array">
       <obj_property name="ElementShortName">regs[0:31][31:0]</obj_property>
       <obj_property name="ObjectShortName">regs[0:31][31:0]</obj_property>
-      <obj_property name="isExpanded"></obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/IF_ID" type="array">
       <obj_property name="ElementShortName">IF_ID[63:0]</obj_property>
       <obj_property name="ObjectShortName">IF_ID[63:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/ID_EX" type="array">
-      <obj_property name="ElementShortName">ID_EX[144:0]</obj_property>
-      <obj_property name="ObjectShortName">ID_EX[144:0]</obj_property>
+      <obj_property name="ElementShortName">ID_EX[154:0]</obj_property>
+      <obj_property name="ObjectShortName">ID_EX[154:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/EX_MEM" type="array">
       <obj_property name="ElementShortName">EX_MEM[106:0]</obj_property>
@@ -79,5 +78,13 @@
    <wvobject fp_name="/tb_top/DUT/DP/mem" type="array">
       <obj_property name="ElementShortName">mem[0:1023][7:0]</obj_property>
       <obj_property name="ObjectShortName">mem[0:1023][7:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/ForwardA" type="array">
+      <obj_property name="ElementShortName">ForwardA[1:0]</obj_property>
+      <obj_property name="ObjectShortName">ForwardA[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/ForwardB" type="array">
+      <obj_property name="ElementShortName">ForwardB[1:0]</obj_property>
+      <obj_property name="ObjectShortName">ForwardB[1:0]</obj_property>
    </wvobject>
 </wave_config>
