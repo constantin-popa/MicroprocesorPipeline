@@ -35,7 +35,8 @@ module top(
 	
 	wire [6:0] op_code;
 	wire [2:0] fun3;
-	wire fun7;
+	wire [6:0]  fun7;
+	wire [2:0] NoHazard;
 	
 	data_path DP(
 	    clk,
@@ -51,7 +52,8 @@ module top(
         
         op_code,
         fun3,
-        fun7
+        fun7,
+        NoHazard
 	);
 	
 	control_path CP(
@@ -67,7 +69,8 @@ module top(
         MemtoReg,   //WRITE BACK
         
         op_code,
-        fun3
+        fun3,
+        NoHazard
 	);
 	
 endmodule

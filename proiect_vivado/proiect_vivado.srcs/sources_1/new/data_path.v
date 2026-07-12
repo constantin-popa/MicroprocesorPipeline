@@ -16,13 +16,15 @@ module data_path(
 	
 	output [6:0] op_code,
 	output [2:0] fun3,
-	output fun7
+	output [6:0] fun7,
+	output ControlSelect
 );
 
 wire [7:0] control;
     
 assign control = { ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg}; 
 
+reg [2:0] NoHazard; // PCWrite, IF_ID_WRITE, Control_Selection
 
 wire [31:0] IR;
 reg [31:0] PC;
@@ -56,6 +58,7 @@ reg [70:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu 
 reg [1:0] ForwardA;
 reg [1:0] ForwardB;
 wire [31:0] wb_data;
+
 //stabileste op_code 
 assign op_code = IF_ID[6:0];
 //stabileste fun3
@@ -85,17 +88,21 @@ end
 //Sumator care calculeaza adresa de salt pentru brench
 assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curente 
 
+//Selectie pentru datele de control(introducere nop in pipeline)
+assign ControlSelect = NoHazard[0];
+
 //logica PC
 always@(posedge clk) begin
     if( res == 1 ) begin
         PC <= 0;
-    end else
+    end else if (NoHazard[2] == 1) begin //PCWRITE
     //in loc de branch si Zero, ne uitam la bitul din EX_MEM corespunzator
-    if( EX_MEM[64] /*Zero*/ & EX_MEM[99] /*branch*/ ) begin   //conditia echivalenta cu PCSrc
-        PC <= EX_MEM[96:65];
-    end
-    else begin
-        PC <= PC + 4;
+        if( EX_MEM[64] /*Zero*/ & EX_MEM[99] /*branch*/ ) begin   //conditia echivalenta cu PCSrc
+            PC <= EX_MEM[96:65];
+        end
+        else begin
+            PC <= PC + 4;
+        end
     end
 end
 
@@ -113,11 +120,11 @@ assign IR = {
 always @(posedge clk) begin
     if(res)
         IF_ID <= 63'b0;
-    else
-    IF_ID <= {
-/*63:32*/       PC,
-/*31:0*/        IR
-    };
+    else if (NoHazard[1] == 1)
+        IF_ID <= {
+    /*63:32*/       PC,
+    /*31:0*/        IR
+        };
 end
 
 //registrul sursa 1
@@ -192,6 +199,20 @@ always@(*) begin
 
 end
 
+//Conditii de hazard
+always@(*) begin
+    if( ID_EX[132] &
+        ((ID_EX[144:140] == IF_ID[19:15]) |
+         (ID_EX[144:140] == IF_ID[24:20])        
+        )) begin
+        NoHazard = 3'b0;
+        end  
+     else
+        NoHazard = 3'b111;
+      
+end
+
+//Conditii de forward
 always@(*) begin
     //hazarduri de EX
     ForwardA = 2'b00;
