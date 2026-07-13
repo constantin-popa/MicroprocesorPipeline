@@ -11,15 +11,15 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="0.000 ns"></ZoomStartTime>
-      <ZoomEndTime time="380.641 ns"></ZoomEndTime>
-      <Cursor1Time time="90.676 ns"></Cursor1Time>
+      <ZoomStartTime time="46.666 ns"></ZoomStartTime>
+      <ZoomEndTime time="326.667 ns"></ZoomEndTime>
+      <Cursor1Time time="135.000 ns"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="209"></NameColumnWidth>
+      <NameColumnWidth column_width="189"></NameColumnWidth>
       <ValueColumnWidth column_width="58"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="24" />
+   <WVObjectSize size="29" />
    <wvobject fp_name="/tb_top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -54,8 +54,8 @@
       <obj_property name="ObjectShortName">ID_EX[154:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/EX_MEM" type="array">
-      <obj_property name="ElementShortName">EX_MEM[106:0]</obj_property>
-      <obj_property name="ObjectShortName">EX_MEM[106:0]</obj_property>
+      <obj_property name="ElementShortName">EX_MEM[74:0]</obj_property>
+      <obj_property name="ObjectShortName">EX_MEM[74:0]</obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/MEM_WB" type="array">
       <obj_property name="ElementShortName">MEM_WB[70:0]</obj_property>
@@ -91,6 +91,14 @@
       <obj_property name="ElementShortName">NoHazard[2:0]</obj_property>
       <obj_property name="ObjectShortName">NoHazard[2:0]</obj_property>
    </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/NoHazardPC" type="array">
+      <obj_property name="ElementShortName">NoHazardPC[2:0]</obj_property>
+      <obj_property name="ObjectShortName">NoHazardPC[2:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/flush" type="logic">
+      <obj_property name="ElementShortName">flush</obj_property>
+      <obj_property name="ObjectShortName">flush</obj_property>
+   </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/ALUSrcB" type="logic">
       <obj_property name="ElementShortName">ALUSrcB</obj_property>
       <obj_property name="ObjectShortName">ALUSrcB</obj_property>
@@ -118,5 +126,17 @@
    <wvobject fp_name="/tb_top/DUT/DP/MemtoReg" type="logic">
       <obj_property name="ElementShortName">MemtoReg</obj_property>
       <obj_property name="ObjectShortName">MemtoReg</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/ForwardPCA" type="array">
+      <obj_property name="ElementShortName">ForwardPCA[1:0]</obj_property>
+      <obj_property name="ObjectShortName">ForwardPCA[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/ForwardPCB" type="array">
+      <obj_property name="ElementShortName">ForwardPCB[1:0]</obj_property>
+      <obj_property name="ObjectShortName">ForwardPCB[1:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/PCSum" type="array">
+      <obj_property name="ElementShortName">PCSum[31:0]</obj_property>
+      <obj_property name="ObjectShortName">PCSum[31:0]</obj_property>
    </wvobject>
 </wave_config>

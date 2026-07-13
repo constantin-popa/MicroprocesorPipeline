@@ -25,7 +25,7 @@ wire [7:0] control;
 assign control = { ALUSrcB, ALUOp, MemRead, MemWrite,Branch, RegWrite,MemtoReg}; 
 
 reg [2:0] NoHazard; // PCWrite, IF_ID_WRITE, Control_Selection
-
+reg [2:0] NoHazardPC;
 wire [31:0] IR;
 reg [31:0] PC;
 reg [31:0] imm32;
@@ -51,13 +51,20 @@ reg [63:0] IF_ID;   //intre InstructionFetch si InstructionDecode se transmit PC
                     
 reg [154:0] ID_EX;    //intre InstructionDecode si Execution se transmite PC, datele din registrii sursa si valoarea imediata
                        //+ toate semnalele de control + fun3 + 1bit din fun7
-reg [106:0] EX_MEM;   //intre Execution si Memory acces se transmit sum, iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2
+reg [74:0] EX_MEM;   //intre Execution si Memory acces se transmit sum, iesirea Zero a Alu si rezultatul operatiei din Alu si registrul sursa 2
                        //+ semnalele de control pentru mem si wb
 reg [70:0] MEM_WB;   //intre Memory si WriteBack se transmit rezultatul lui alu si data ce s a citit din memorie
                        //+ semnalele de control pentru wb
 reg [1:0] ForwardA;
 reg [1:0] ForwardB;
+reg [1:0] ForwardPCA;
+reg [1:0] ForwardPCB;
 wire [31:0] wb_data;
+
+//semnal de Flush
+reg flush;
+
+wire is_branch = (IF_ID[6:0] == 7'b1100011);
 
 //stabileste op_code 
 assign op_code = IF_ID[6:0];
@@ -86,19 +93,35 @@ always@(IF_ID[31:0]) begin
 end
 
 //Sumator care calculeaza adresa de salt pentru brench
-assign PCSum = ID_EX[127:96] + imm32;  //PC-ul corespunzator instructiunii curente 
+assign PCSum = IF_ID[63:32] + imm32;  //PC-ul corespunzator instructiunii curente 
 
 //Selectie pentru datele de control(introducere nop in pipeline)
-assign ControlSelect = NoHazard[0];
+assign ControlSelect = NoHazard[0] & NoHazardPC[0]; //| NoHazardPC[0];
+
+//Verificare pentru brench
+wire [31:0] PCa;
+wire [31:0] PCb;
+assign PCa = (ForwardPCA == 2'b00) ? da :
+             ((ForwardPCA == 2'b10) ? EX_MEM[63:32] : wb_data);
+             
+assign PCb = (ForwardPCB == 2'b00) ? db : 
+              ((ForwardPCB == 2'b10) ? EX_MEM[63:32] : wb_data);
+
+always@(*) begin
+    flush = ~|(PCa^PCb) & is_branch ;
+end 
+//trebuie modificat ex_mem pentru a sterge PCSUM din el si a modifica pozitiile bitior
+//trebuie tratat forwardingul si hazardul pentru unitatea de verificare a egalitatii la brench
+//trebuie creat semnalul de flush
 
 //logica PC
 always@(posedge clk) begin
     if( res == 1 ) begin
         PC <= 0;
-    end else if (NoHazard[2] == 1) begin //PCWRITE
+    end else if (NoHazard[2] ) begin //PCWRITE
     //in loc de branch si Zero, ne uitam la bitul din EX_MEM corespunzator
-        if( EX_MEM[64] /*Zero*/ & EX_MEM[99] /*branch*/ ) begin   //conditia echivalenta cu PCSrc
-            PC <= EX_MEM[96:65];
+        if(  flush ) begin   //conditia echivalenta cu PCSrc
+            PC <= PCSum;
         end
         else begin
             PC <= PC + 4;
@@ -119,8 +142,10 @@ assign IR = {
 //intre InstructionFetch si InstructionDecode se transmit PC ( pentru un branch eventual) si instructiunea din memorie de la adresa PC
 always @(posedge clk) begin
     if(res)
-        IF_ID <= 63'b0;
-    else if (NoHazard[1] == 1)
+        IF_ID <= 64'b0;
+    else if( flush )
+        IF_ID <= 64'b0;
+    else if (NoHazard[1] & NoHazardPC[1])
         IF_ID <= {
     /*63:32*/       PC,
     /*31:0*/        IR
@@ -201,38 +226,48 @@ end
 
 //Conditii de hazard
 always@(*) begin
-    if( ID_EX[132] &
-        ((ID_EX[144:140] == IF_ID[19:15]) |
-         (ID_EX[144:140] == IF_ID[24:20])        
+    if( ID_EX[132] &   //MemRead -> verifica daca instructiunea anterioara este de tip LW
+        ((ID_EX[144:140] == IF_ID[19:15]) |  // si daca oricare din registrii instr curente
+         (ID_EX[144:140] == IF_ID[24:20])      // este registrul folosit de lw      
         )) begin
         NoHazard = 3'b0;
-        end  
+        end
      else
-        NoHazard = 3'b111;
-      
+        NoHazard = 3'b111;      
 end
+
+//Conditii de hazzard PC
+always@(*) begin
+    if(is_branch & ID_EX[129] &
+       ((ID_EX[144:140] == IF_ID[19:15]) | (ID_EX[144:140] == IF_ID[24:20])) 
+    ) begin
+        NoHazardPC = 3'b0;
+    end
+    else
+        NoHazardPC = 3'b111;   
+end 
 
 //Conditii de forward
 always@(*) begin
     //hazarduri de EX
     ForwardA = 2'b00;
     ForwardB = 2'b00;
-    if ( EX_MEM[98] & 
-         (EX_MEM[106:102] != 5'b0) &
-         (EX_MEM[106:102] == ID_EX[154:150])  //EX_MEM rd = ID_EX rs1
+    if ( EX_MEM[66] & 
+         (EX_MEM[74:70] != 5'b0) &
+         (EX_MEM[74:70] == ID_EX[154:150])  //EX_MEM rd = ID_EX rs1
         ) begin
         ForwardA = 2'b10;
     end
-    if ( EX_MEM[98] & 
-         (EX_MEM[106:102] != 5'b0) &
-         (EX_MEM[106:102] == ID_EX[149:145]) // EX_MEM rd = ID_EX rs2
+    if ( EX_MEM[66] & 
+         (EX_MEM[74:70] != 5'b0) &
+         (EX_MEM[74:70] == ID_EX[149:145]) // EX_MEM rd = ID_EX rs2
         ) begin
         ForwardB = 2'b10;
     end
     //hazarduri de MEM
     if ( MEM_WB[65] & 
          (MEM_WB[70:66] != 5'b0) &
-         ~(EX_MEM[98] & (EX_MEM[106:102] != 0) & (EX_MEM[106:102] == ID_EX[154:150]) ) &
+         ~(EX_MEM[66] & (EX_MEM[74:70] != 0) & (EX_MEM[74:70] == ID_EX[154:150]) ) &
          (MEM_WB[70:66] == ID_EX[154:150]) // MEM_WB rd = ID_EX rs1
         ) begin
         ForwardA = 2'b01;
@@ -240,12 +275,47 @@ always@(*) begin
     
     if ( MEM_WB[65] & 
          (MEM_WB[70:66] != 5'b0) &
-         ~(EX_MEM[98] & (EX_MEM[106:102] != 0) & (EX_MEM[106:102] == ID_EX[149:145]) ) &
+         ~(EX_MEM[66] & (EX_MEM[74:70] != 0) & (EX_MEM[74:70] == ID_EX[149:145]) ) &
          (MEM_WB[70:66] == ID_EX[149:145]) // MEM_WB rd = ID_EX rs2
         ) begin
         ForwardB = 2'b01;
-    end
-    
+    end    
+end
+
+//Conditii de forward pentru PC unit
+always@(*) begin
+        ForwardPCA = 2'b00;
+        ForwardPCB = 2'b00;
+        
+        if ( is_branch & EX_MEM[66] &
+         (IF_ID[19:15] != 5'b0) &
+         (IF_ID[19:15] == EX_MEM[74:70])  //rs1  
+        ) begin
+            ForwardPCA = 2'b10;
+        end
+        
+        if ( is_branch & EX_MEM[66] &
+            (IF_ID[24:20] != 5'b0) &
+            (IF_ID[24:20] == EX_MEM[74:70])  //rs1  
+        ) begin
+            ForwardPCB = 2'b10;
+        end
+        
+        if( is_branch & MEM_WB[65] &
+            (IF_ID[19:15] !=5'b0) &
+            ~(is_branch & EX_MEM[66] & (IF_ID[19:15] != 5'b0) & (IF_ID[19:15] == EX_MEM[74:70])) &
+            (IF_ID[19:15] == MEM_WB[70:66])
+          ) begin 
+            ForwardPCA = 2'b01;
+        end    
+        
+        if( is_branch & MEM_WB[65] &
+            (IF_ID[24:20] !=5'b0) &
+            ~(is_branch & EX_MEM[66] & (IF_ID[24:20] != 5'b0) & (IF_ID[24:20] == EX_MEM[74:70])) &
+            (IF_ID[24:20] == MEM_WB[70:66])
+          ) begin
+            ForwardPCB = 2'b01;
+        end   
 end
 
 //EX_MEM
@@ -253,12 +323,12 @@ end
 //semnalele de control pentru mem si wb
 always @(posedge clk) begin
     if(res)
-        EX_MEM <= 106'b0;
+        EX_MEM <= 75'b0;
     else
     EX_MEM <= {
-/*106:102*/  ID_EX[144:140], //registrul de scriere
-/*101:97*/   ID_EX[132:128], /*MemRead, MemWrite,Branch, RegWrite,MemtoReg*/ 
-/*96:65*/    PCSum,
+/*106:102*/  ID_EX[144:140], //registrul de scriere                             /*74:70*/
+/*101:97*/   ID_EX[132:128], /*MemRead, MemWrite,Branch, RegWrite,MemtoReg*/    /*69:65*/
+///*96:65*/    PCSum,   //de sters
 /*64*/       Zero,
 /*63:32*/    alu,
 /*31:0*/     ID_EX[63:32] // db            
@@ -273,8 +343,8 @@ always @(posedge clk) begin
         MEM_WB <= 70'b0;
     else
     MEM_WB <= {
-/*70:66*/       EX_MEM[106:102], //registru de scriere
-/*65:64*/       EX_MEM[98:97],   //RegWrite,MemtoReg
+/*70:66*/       EX_MEM[74:70], //registru de scriere
+/*65:64*/       EX_MEM[66:65],   //RegWrite,MemtoReg
 /*63:32*/       mem[EX_MEM[63:32]+3],
                 mem[EX_MEM[63:32]+2],
                 mem[EX_MEM[63:32]+1],
@@ -285,28 +355,13 @@ end
 
 //Scriere in memorie : MemWrite
 always@(posedge clk) begin
-    if( /*MemWrite*/ EX_MEM[100] == 1) begin
+    if( /*MemWrite*/ EX_MEM[68] == 1) begin
         mem[EX_MEM[63:32]+3]	<= EX_MEM[31:24];
 		mem[EX_MEM[63:32]+2] <= EX_MEM[23:16];
 		mem[EX_MEM[63:32]+1] <= EX_MEM[15:8];
 		mem[EX_MEM[63:32]+0] <= EX_MEM[7:0];	
     end
 end
-
-//valoarea extrasa din memoria de date in etapa de memory acces
-//Citire din memorie
-//always@(posedge clk) begin
-////    if(res == 1) begin
-////        MDR <= 32'b0;
-////    end else 
-//    if(/*MemRead*/ EX_MEM[101] == 1) begin
-//        MDR[31:24] 	= mem[EX_MEM[63:32]+3];
-//        MDR[23:16] 	= mem[EX_MEM[63:32]+2];
-//        MDR[15:8] 	= mem[EX_MEM[63:32]+1];
-//        MDR[7:0] 	= mem[EX_MEM[63:32]];	
-//    end
-//end
-
 
 assign wb_data = ( MEM_WB[64] == 1) ? MEM_WB[63:32] : MEM_WB[31:0];
 //Scrierea in registru
