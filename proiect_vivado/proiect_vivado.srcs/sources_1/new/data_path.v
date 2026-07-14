@@ -108,7 +108,7 @@ assign PCb = (ForwardPCB == 2'b00) ? db :
               ((ForwardPCB == 2'b10) ? EX_MEM[63:32] : wb_data);
 
 always@(*) begin
-    flush = ~|(PCa^PCb) & is_branch ;
+    flush = (~|(PCa^PCb) & is_branch) ;
 end 
 //trebuie modificat ex_mem pentru a sterge PCSUM din el si a modifica pozitiile bitior
 //trebuie tratat forwardingul si hazardul pentru unitatea de verificare a egalitatii la brench
@@ -118,9 +118,9 @@ end
 always@(posedge clk) begin
     if( res == 1 ) begin
         PC <= 0;
-    end else if (NoHazard[2] ) begin //PCWRITE
+    end else if (NoHazard[2]) begin //PCWRITE
     //in loc de branch si Zero, ne uitam la bitul din EX_MEM corespunzator
-        if(  flush ) begin   //conditia echivalenta cu PCSrc
+        if(  flush) begin   //conditia echivalenta cu PCSrc
             PC <= PCSum;
         end
         else begin
@@ -143,7 +143,7 @@ assign IR = {
 always @(posedge clk) begin
     if(res)
         IF_ID <= 64'b0;
-    else if( flush )
+    else if( flush & &NoHazardPC )
         IF_ID <= 64'b0;
     else if (NoHazard[1] & NoHazardPC[1])
         IF_ID <= {
@@ -224,6 +224,8 @@ always@(*) begin
 
 end
 
+reg [2:0] DoubleHazard;
+
 //Conditii de hazard
 always@(*) begin
     if( ID_EX[132] &   //MemRead -> verifica daca instructiunea anterioara este de tip LW
@@ -232,7 +234,9 @@ always@(*) begin
         )) begin
         NoHazard = 3'b0;
         end
-     else
+     else if(DoubleHazard == 3'b0) begin
+        NoHazard = 3'b0;
+     end else
         NoHazard = 3'b111;      
 end
 
@@ -241,6 +245,12 @@ always@(*) begin
     if(is_branch & ID_EX[129] &
        ((ID_EX[144:140] == IF_ID[19:15]) | (ID_EX[144:140] == IF_ID[24:20])) 
     ) begin
+        NoHazardPC = 3'b0;
+    end
+    else if(is_branch & EX_MEM[69] &
+       ((EX_MEM[74:70] == IF_ID[19:15]) |  // si daca oricare din registrii instr curente
+         (EX_MEM[74:70] == IF_ID[24:20])      // este registrul folosit de lw      
+        )) begin
         NoHazardPC = 3'b0;
     end
     else

@@ -11,15 +11,19 @@
       </db_ref>
    </db_ref_list>
    <zoom_setting>
-      <ZoomStartTime time="46.666 ns"></ZoomStartTime>
-      <ZoomEndTime time="326.667 ns"></ZoomEndTime>
-      <Cursor1Time time="135.000 ns"></Cursor1Time>
+      <ZoomStartTime time="0.000 ns"></ZoomStartTime>
+      <ZoomEndTime time="280.001 ns"></ZoomEndTime>
+      <Cursor1Time time="76.683 ns"></Cursor1Time>
    </zoom_setting>
    <column_width_setting>
-      <NameColumnWidth column_width="189"></NameColumnWidth>
+      <NameColumnWidth column_width="177"></NameColumnWidth>
       <ValueColumnWidth column_width="58"></ValueColumnWidth>
    </column_width_setting>
-   <WVObjectSize size="29" />
+   <WVObjectSize size="30" />
+   <wave_markers>
+      <marker time="185000" label="" />
+      <marker time="115489" label="" />
+   </wave_markers>
    <wvobject fp_name="/tb_top/clk" type="logic">
       <obj_property name="ElementShortName">clk</obj_property>
       <obj_property name="ObjectShortName">clk</obj_property>
@@ -78,6 +82,7 @@
    <wvobject fp_name="/tb_top/DUT/DP/mem" type="array">
       <obj_property name="ElementShortName">mem[0:1023][7:0]</obj_property>
       <obj_property name="ObjectShortName">mem[0:1023][7:0]</obj_property>
+      <obj_property name="isExpanded"></obj_property>
    </wvobject>
    <wvobject fp_name="/tb_top/DUT/DP/ForwardA" type="array">
       <obj_property name="ElementShortName">ForwardA[1:0]</obj_property>
@@ -138,5 +143,9 @@
    <wvobject fp_name="/tb_top/DUT/DP/PCSum" type="array">
       <obj_property name="ElementShortName">PCSum[31:0]</obj_property>
       <obj_property name="ObjectShortName">PCSum[31:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/tb_top/DUT/DP/wb_data" type="array">
+      <obj_property name="ElementShortName">wb_data[31:0]</obj_property>
+      <obj_property name="ObjectShortName">wb_data[31:0]</obj_property>
    </wvobject>
 </wave_config>
